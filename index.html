@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quotation — Grand Ortus Solutions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+/* =====================================================================
+   APP CHROME (not part of the quotation itself — excluded from print)
+   ===================================================================== */
+:root{
+  --ink:#1c2733; --ink-soft:#5b6b7c; --line:#dde3ea; --canvas:#e9edf2;
+  --accent:#1f5c9e; --accent-dark:#154674; --danger:#c0392b; --danger-bg:#fdecea;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--canvas);}
+body{font-family:"Trebuchet MS",Arial,Helvetica,sans-serif;color:var(--ink);}
+button,select{font-family:inherit;cursor:pointer}
+
+.chrome{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;padding:10px 20px;gap:14px;flex-wrap:wrap}
+.chrome .brand{display:flex;align-items:center;gap:9px}
+.chrome .brand .mark{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px}
+.chrome .brand .title{font-weight:700;font-size:14px}
+.chrome .brand .sub{font-size:11px;color:var(--ink-soft);font-weight:400}
+.chrome .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:#fff;padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.btn.tiny{padding:3px 8px;font-size:11px;border-radius:5px}
+.autosave-note{font-size:11px;color:var(--ink-soft)}
+
+/* ---------- Stage that hosts the printable page ---------- */
+.stage{display:flex;justify-content:center;padding:26px 20px 70px 20px}
+.page-wrap{position:relative}
+
+/* ---------- Editable-affordance styling (screen only) ---------- */
+[contenteditable]{border-radius:3px}
+[contenteditable]:hover{background:rgba(31,92,158,.07);box-shadow:0 0 0 2px rgba(31,92,158,.12)}
+[contenteditable]:focus{outline:none;background:rgba(31,92,158,.12);box-shadow:0 0 0 2px var(--accent)}
+[contenteditable]:empty:before{content:attr(data-placeholder);color:#9fb3c8;font-style:italic}
+
+/* ---------- Table structure toolbar (screen only) ---------- */
+.table-controls{margin:0 20px 8px 20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.col-chip{display:flex;align-items:center;gap:4px;background:#f2f6fa;border:1px solid var(--line);border-radius:6px;padding:4px 6px;font-size:11px}
+.col-chip .name{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink-soft)}
+.col-chip select{border:1px solid var(--line);border-radius:4px;font-size:10.5px;padding:2px 3px;background:#fff}
+.col-chip .formula-input{width:130px;border:1px solid var(--accent);border-radius:4px;font-size:10.5px;padding:2px 5px;background:#f0f7ff;color:var(--accent-dark);font-family:monospace;font-weight:600}
+.col-chip .formula-input:focus{outline:none;box-shadow:0 0 0 2px rgba(31,92,158,.3)}
+.col-chip button{border:none;background:transparent;color:var(--ink-soft);font-size:11px;width:18px;height:18px;line-height:1;border-radius:3px}
+.col-chip button:hover{background:var(--danger-bg);color:var(--danger)}
+.col-chip .move{color:var(--ink-soft);font-size:10px}
+.col-chip .move:hover{color:var(--accent);background:rgba(31,92,158,.12)}
+.addcol-btn{border:1px dashed var(--accent);color:var(--accent);background:#fff;border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700}
+.addcol-btn:disabled{opacity:.35;cursor:not-allowed;border-color:var(--ink-soft);color:var(--ink-soft)}
+.colcount-note{font-size:11px;color:var(--ink-soft);margin-left:4px}
+
+.ctrl-col{width:26px;background:transparent !important;border:none !important;box-shadow:none !important}
+.ctrl-cell{text-align:center;padding:0 !important}
+.ctrl-cell button{border:none;background:transparent;color:#b7c2cd;font-size:13px;width:22px;height:22px;border-radius:4px}
+.ctrl-cell button:hover{background:var(--danger-bg);color:var(--danger)}
+tr.add-row-row td{padding:0 !important;border-bottom:none !important}
+.add-row-btn{width:100%;padding:7px 8px;background:#f5f8fb;border:1px dashed #c7d4e0;color:var(--accent);font-size:11.5px;font-weight:700;border-radius:5px;margin:4px 0}
+.add-row-btn:hover{background:#eaf2fb}
+
+.logo-upload{margin-top:6px;text-align:center}
+.logo-upload label{font-size:10.5px;color:var(--accent);border:1px dashed var(--accent);border-radius:5px;padding:3px 8px;cursor:pointer}
+.logo-upload input{display:none}
+
+/* =====================================================================
+   THE QUOTATION ITSELF — editable quotation template
+   ===================================================================== */
+.page{width:794px;margin:0 auto;padding:0 0 30px 0;background:#fff;box-shadow:0 4px 20px rgba(20,30,45,.12);font-size:12px;color:rgb(34,34,34)}
+.top-bar{background:rgb(31,92,158);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:8px 20px;font-size:11px;font-weight:bold}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 20px 10px 20px}
+.logo-box{border:1px solid rgb(31,92,158);padding:8px 14px;min-width:180px;max-width:240px;text-align:center;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.logo-box img{max-height:65px;max-width:100%;height:auto;width:auto;display:block;margin:0 auto;object-fit:contain}
+
+.company-address{text-align:right;font-size:11px;line-height:1.5;color:rgb(51,51,51)}
+.company-address .link{color:rgb(31,92,158)}
+.quote-title{text-align:center;color:rgb(31,92,158);font-size:22px;font-weight:bold;margin:18px 0 6px 0}
+.title-rule{border-top:3px solid rgb(31,92,158);border-bottom:1px solid rgb(224,168,0);margin:0 20px 14px 20px}
+.info-grid{display:flex;margin:0 20px 14px 20px;border:1px solid rgb(207,216,227)}
+.info-col{width:50%;flex:1}
+.info-head{background:rgb(31,92,158);color:#fff;font-weight:bold;padding:6px 12px;font-size:11px}
+.info-body{padding:12px;background:rgb(242,246,250);font-size:11.5px;line-height:1.6;min-height:90px}
+.info-body.right{background:rgb(247,250,253)}
+.info-body b.co-name{color:rgb(31,92,158);font-size:13px}
+.kv{display:flex;justify-content:space-between;padding:2px 0}
+.kv .k{color:rgb(68,68,68)}
+.kv .v{font-weight:bold}
+.valid-until{color:rgb(192,57,43);font-weight:bold}
+table.items{width:754px;margin:0 20px 0 20px;border-collapse:collapse;font-size:11px;table-layout:fixed}
+table.items thead th{background:rgb(31,92,158);color:#fff;padding:7px 8px;text-align:left;font-size:11px;font-weight:bold}
+table.items thead th[draggable="true"]{cursor:grab}
+table.items thead th.dragging{opacity:0.5}
+table.items thead th.drag-over{border-left:3px solid #ffe066 !important;background:rgb(21,70,116) !important}
+table.items thead th.ctrl-col{background:transparent !important;border:none !important;box-shadow:none !important}
+table.items tbody td{padding:7px 8px;border-bottom:1px solid rgb(227,232,238);vertical-align:top;word-break:break-word}
+table.items tbody tr:nth-child(even){background:rgb(247,249,251)}
+table.items td.computed{color:rgb(90,100,110);font-style:italic}
+.totals-wrap{width:754px;margin:0 20px}
+table.totals{width:100%;border-collapse:collapse;font-size:11.5px}
+table.totals td{padding:6px 8px}
+table.totals tr.grand td{background:rgb(31,92,158);color:#fff;font-weight:bold;font-size:13px}
+table.totals td.label{text-align:right;padding-right:12px}
+table.totals td.value{text-align:right;width:140px}
+.section-title{color:rgb(31,92,158);font-weight:bold;font-size:14px;margin:22px 20px 4px 20px}
+.section-rule{border-top:3px solid rgb(224,168,0);margin:0 20px 10px 20px}
+table.terms{width:754px;margin:0 20px 14px 20px;border-collapse:collapse;font-size:11.5px;border:1px solid rgb(223,230,238)}
+table.terms tr:nth-child(even){background:rgb(245,248,251)}
+table.terms td{border-bottom:1px solid rgb(223,230,238);padding:8px 12px}
+table.terms td.label{font-weight:bold;color:rgb(34,34,34);width:18%}
+table.terms td.value{color:rgb(102,102,102)}
+.payment-box{margin:0 20px 14px 20px;display:flex;justify-content:space-between;background:rgb(242,246,250);border:1px solid rgb(207,216,227);padding:12px}
+.payment-box .col{width:48%;font-size:11.5px;line-height:1.6}
+.payment-box .col h4{color:rgb(31,92,158);margin:0 0 4px 0;font-size:12px}
+.thankyou{margin:20px 20px 8px 20px;font-style:italic;color:rgb(68,68,68);font-size:11.5px;text-align:center}
+.footer{border-top:1px solid rgb(31,92,158);margin:0 20px;padding-top:6px;font-size:10px;color:rgb(85,85,85);text-align:center}
+
+/* =====================================================================
+   PRINT & PDF EXPORT — exact replica of screen template
+   ===================================================================== */
+@media print{
+  @page{ margin:0; size:A4 portrait; }
+  html, body{
+    background:#fff !important; margin:0 !important; padding:0 !important; width:100% !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
+  }
+  *, *::before, *::after{
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
+  }
+  .chrome, .no-print{ display:none !important }
+  .stage{ padding:0 !important; margin:0 !important; display:block !important }
+  .page-wrap{ width:100% !important; margin:0 !important }
+  .page{
+    box-shadow:none !important; margin:0 auto !important; width:794px !important; max-width:100% !important;
+    padding:0 0 20px 0 !important; background:#fff !important; border:none !important; page-break-after:avoid;
+  }
+  [contenteditable]{ border:none !important; outline:none !important; box-shadow:none !important; background:transparent !important }
+  [contenteditable]:hover, [contenteditable]:focus{ background:transparent !important; box-shadow:none !important }
+  [contenteditable]:empty:before{ content:"" !important }
+  .logo-upload, .table-controls, .ctrl-col, .ctrl-cell, .add-row-row{ display:none !important }
+  .header, .info-grid, .totals-wrap, .payment-box, table.terms, .section-title, .title-rule, .top-bar, .footer, .thankyou{
+    break-inside: avoid !important; page-break-inside: avoid !important;
+  }
+  table.items tr{ break-inside: avoid !important; page-break-inside: avoid !important; }
+  table.items thead{ display: table-header-group !important; }
+  table.items thead th:not(.ctrl-col){
+    background-color: rgb(31,92,158) !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="chrome no-print">
+  <div class="brand">
+    <div class="mark">GO</div>
+    <div><div class="title">Quotation Editor</div><div class="sub">Click any text on the document below to edit it directly</div></div>
+  </div>
+  <div class="actions">
+    <span class="autosave-note" id="autosave-note">Saved in this browser</span>
+    <button class="btn" id="btn-sample">Load sample data</button>
+    <button class="btn danger" id="btn-reset">Reset all</button>
+    <button class="btn" id="btn-pdf">📥 Download PDF</button>
+    <button class="btn primary" id="btn-print">🖨 Print / Save as PDF</button>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="page-wrap">
+    <div id="quote-root"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   1. DATA MODEL (unchanged shape — persisted to localStorage)
+   ===================================================================== */
+const STORAGE_KEY = "quotationBuilder.v2";
+
+function defaultState(){
+  return {
+    meta:{ quoteNo:"GOSPL/26-27/001", date: todayISO(), validUntil: addDaysISO(30), subject:"Proposal for Network Infrastructure Upgrade", contactName:"" },
+    customer:{ accountName:"", street:"", city:"", state:"", country:"India", zip:"", paymentTerm:"50% Advance, 50% on Delivery" },
+    company:{
+      orgName:"Grand Ortus Solutions Private Limited",
+      addressLine1:"Unitech Business Zone, Nirvana Rd",
+      addressLine2:"Sector 50, Gurugram, Haryana 122018",
+      city:"Gurugram", state:"Haryana",
+      email:"info@grandortus.com", phone:"+91-124-4233760", website:"www.grandortus.com",
+      gst:"06AAICG1259L1ZE", pan:"AAICG1259L", cin:"U72200HR2019PTC084123",
+      logoDataUrl:""
+    },
+    columns:[
+      {id:"c1", label:"SN", type:"text"},
+      {id:"c2", label:"Part No", type:"text"},
+      {id:"c3", label:"Description", type:"text"},
+      {id:"c4", label:"Qty", type:"qty"},
+      {id:"c5", label:"Unit Price", type:"price"},
+      {id:"c6", label:"Total Price", type:"amount"}
+    ],
+    rows:[ {c1:"1", c2:"", c3:"", c4:"", c5:"", c6:""} ],
+    totals:{ tax:"0", adjustment:"0" },
+    terms:{
+      implementation:"Within 4-6 weeks from date of Purchase Order.",
+      taxes:"As applicable, extra at actuals.",
+      validity:"This quotation is valid for 30 days from the date of issue.",
+      orderPolicy:"Purchase Order to be raised in the name of Grand Ortus Solutions Private Limited.",
+      paymentTerms:"50% advance along with Purchase Order, balance 50% before dispatch.",
+      orderName:"", additionalNotes:""
+    },
+    payment:{ accountName:"Grand Ortus Solutions Private Limited", bankName:"Kotak Mahindra Bank", accountNo:"9958014223", ifsc:"KKBK0004256" }
+  };
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function addDaysISO(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+
+let state = loadState();
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const d = defaultState();
+    const loadedMeta = {...d.meta, ...parsed.meta};
+    if (loadedMeta.quoteNo && (/^\d+$/.test(loadedMeta.quoteNo) || loadedMeta.quoteNo.length < 5)) {
+      loadedMeta.quoteNo = "GOSPL/26-27/" + loadedMeta.quoteNo;
+    }
+    return {
+      meta: loadedMeta, customer:{...d.customer, ...parsed.customer},
+      company:{...d.company, ...parsed.company},
+      columns: Array.isArray(parsed.columns) && parsed.columns.length ? parsed.columns : d.columns,
+      rows: Array.isArray(parsed.rows) && parsed.rows.length ? parsed.rows : d.rows,
+      totals:{...d.totals, ...parsed.totals}, terms:{...d.terms, ...parsed.terms}, payment:{...d.payment, ...parsed.payment}
+    };
+  }catch(e){ console.warn("Could not load saved quotation, starting fresh.", e); return defaultState(); }
+}
+let saveTimer=null;
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ console.warn("Save failed",e); } }, 150);
+}
+function getPath(obj, path){ return path.split(".").reduce((o,k)=> (o||{})[k], obj); }
+function setPath(obj, path, val){ const parts = path.split("."); let o=obj; for(let i=0;i<parts.length-1;i++) o=o[parts[i]]; o[parts[parts.length-1]] = val; }
+
+/* =====================================================================
+   2. COLUMN HELPERS
+   ===================================================================== */
+const MIN_COLS=2, MAX_COLS=9;
+const COLUMN_TYPES=[
+  {value:"text",label:"Text"},{value:"number",label:"Number"},{value:"qty",label:"Qty"},
+  {value:"price",label:"Price"},{value:"amount",label:"Amount (Qty×Price)"},
+  {value:"formula",label:"fx Custom Formula"}
+];
+function isNumericType(t){ return t==="number"||t==="qty"||t==="price"||t==="amount"||t==="formula"; }
+function widthWeight(col){
+  const l=col.label.toLowerCase();
+  if(col.type==="qty") return 7;
+  if(col.type==="price"||col.type==="amount"||col.type==="formula") return 13;
+  if(/s\.?no|sr\.?no|^sn$/.test(l)) return 6;
+  if(/code|part|sku|model/.test(l)) return 11;
+  if(/description|product|item|particular|detail/.test(l)) return 20;
+  return 14;
+}
+function computeColumnWidths(columns){
+  const weights = columns.map(widthWeight);
+  const sum = weights.reduce((a,b)=>a+b,0);
+  const floor = columns.length >= 8 ? 5 : 6;
+  let pct = weights.map(w => Math.max(floor, (w/sum)*100));
+  const total = pct.reduce((a,b)=>a+b,0);
+  return pct.map(p => (p/total)*100); // renormalize so widths always sum to exactly 100%
+}
+function findFirstColumnOfType(columns,type){ return columns.find(c=>c.type===type); }
+function formatNumber(v){
+  if(v==="#ERR") return "#ERR";
+  const n=parseFloat(v); if(isNaN(n)) return "";
+  return n.toLocaleString("en-IN",{maximumFractionDigits:2});
+}
+function formatDateDisplay(iso){
+  if(!iso) return "";
+  const d = new Date(iso+"T00:00:00");
+  if(isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});
+}
+
+/* =====================================================================
+   3. CALCULATIONS & CUSTOM FORMULA ENGINE
+   ===================================================================== */
+function evaluateFormula(formulaStr, row, columns){
+  if(!formulaStr || !formulaStr.trim()) return "";
+  let expr = formulaStr.trim();
+
+  // 1. Replace [Column Label] with numeric cell value from this row
+  columns.forEach(col => {
+    if(col.label){
+      const escaped = col.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const val = parseFloat(row[col.id]);
+      const numVal = isNaN(val) ? 0 : val;
+      expr = expr.replace(new RegExp(`\\[${escaped}\\]`, 'gi'), String(numVal));
+    }
+  });
+
+  // 2. Replace column ID e.g. c1, c4, c5
+  columns.forEach(col => {
+    const val = parseFloat(row[col.id]);
+    const numVal = isNaN(val) ? 0 : val;
+    expr = expr.replace(new RegExp(`\\b${col.id}\\b`, 'gi'), String(numVal));
+  });
+
+  // 3. Handle percentage notation e.g. 18% -> (18/100)
+  expr = expr.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
+
+  // 4. Security validation: allow numbers, arithmetic operators (+ - * / % ( )), spaces, decimals
+  if (/[^0-9\+\-\*\/\%\(\)\.\s]/.test(expr)) {
+    return "#ERR";
+  }
+
+  try {
+    const res = Function(`"use strict"; return (${expr});`)();
+    if (typeof res === "number" && !isNaN(res) && isFinite(res)) {
+      return String(+res.toFixed(2));
+    }
+    return "";
+  } catch(e){
+    return "#ERR";
+  }
+}
+
+function recalculate(){
+  const qtyCol = findFirstColumnOfType(state.columns,"qty");
+  const priceCol = findFirstColumnOfType(state.columns,"price");
+  const formulaCols = state.columns.filter(c=>c.type==="amount" || c.type==="formula");
+
+  state.rows.forEach(row=>{
+    formulaCols.forEach(col=>{
+      let formula = col.formula;
+      if (!formula && col.type==="amount" && qtyCol && priceCol) {
+        formula = `[${qtyCol.label}] * [${priceCol.label}]`;
+      }
+      if (formula) {
+        row[col.id] = evaluateFormula(formula, row, state.columns);
+      }
+    });
+  });
+
+  const primaryAmountCol = formulaCols[0] || state.columns.find(c=>isNumericType(c.type));
+  let subTotal=0;
+  if(primaryAmountCol){
+    state.rows.forEach(row=>{
+      const v=parseFloat(row[primaryAmountCol.id]);
+      if(!isNaN(v)) subTotal+=v;
+    });
+  }
+  const tax = parseFloat(state.totals.tax)||0;
+  const adjustment = parseFloat(state.totals.adjustment)||0;
+  const grandTotal = subTotal+tax+adjustment;
+  return {subTotal,tax,adjustment,grandTotal,hasAmountCol:!!primaryAmountCol};
+}
+
+function updateCalculatedSpans(){
+  const calc = recalculate();
+  const root = document.getElementById("quote-root");
+  if(!root) return;
+  root.querySelectorAll("td.computed [data-row][data-col]").forEach(span=>{
+    const r=+span.dataset.row, c=span.dataset.col;
+    const v = state.rows[r][c] ?? "";
+    span.textContent = v!=="" ? formatNumber(v) : "";
+    span.dataset.raw = v;
+  });
+  const subEl = document.getElementById("tot-subtotal");
+  const grandEl = document.getElementById("tot-grandtotal");
+  if(subEl) subEl.textContent = formatNumber(calc.subTotal);
+  if(grandEl) grandEl.textContent = formatNumber(calc.grandTotal);
+}
+
+function esc(s){ return (s??"").toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* =====================================================================
+   4. RENDER THE FULL DOCUMENT (this literally IS your template)
+   ===================================================================== */
+function ce(path, opts={}){
+  // contenteditable span/div helper bound to a state path
+  const val = getPath(state, path);
+  const tag = opts.tag || "span";
+  const cls = opts.cls ? ` class="${opts.cls}"` : "";
+  const ph = opts.placeholder ? ` data-placeholder="${esc(opts.placeholder)}"` : "";
+  return `<${tag}${cls} contenteditable="true" data-bind="${path}"${ph}>${esc(val)}</${tag}>`;
+}
+
+function renderDocument(){
+  const calc = recalculate();
+  const widths = computeColumnWidths(state.columns);
+  const c = state.company;
+
+  const theadCells = state.columns.map((col,i)=>
+    `<th style="width:${widths[i]}%${isNumericType(col.type)?';text-align:right':''}" contenteditable="true" data-col-header="${col.id}">${esc(col.label)}</th>`
+  ).join("") + `<th class="ctrl-col no-print"></th>`;
+
+  const bodyRows = state.rows.map((row,rIdx)=>{
+    const tds = state.columns.map(col=>{
+      const isComputed = col.type==="formula" || (col.type==="amount" && findFirstColumnOfType(state.columns,"qty") && findFirstColumnOfType(state.columns,"price"));
+      let val = row[col.id] ?? "";
+      const display = (isNumericType(col.type) && val!=="") ? formatNumber(val) : esc(val);
+      return `<td class="${isNumericType(col.type)?'align-right':''} ${isComputed?'computed':''}" style="${isNumericType(col.type)?'text-align:right':''}">
+        <span ${isComputed?'':'contenteditable="true"'} data-row="${rIdx}" data-col="${col.id}" data-raw="${esc(val)}">${display}</span>
+      </td>`;
+    }).join("");
+    return `<tr data-rowline="${rIdx}">${tds}<td class="ctrl-cell no-print"><button data-del-row="${rIdx}" title="Delete row">✕</button></td></tr>`;
+  }).join("");
+
+  document.getElementById("quote-root").innerHTML = `
+
+  <div class="table-controls no-print" id="table-controls"></div>
+
+  <div class="page" id="quote-page">
+    <div class="top-bar">
+      <span>${ce("company.orgName")} | Confidential Quotation</span>
+      <span>&nbsp; &nbsp; Quote No: ${ce("meta.quoteNo")} &nbsp; Date: ${ce("meta.date")}</span>
+    </div>
+    <div class="header">
+      <div class="logo-box">
+        <img src="logo gospl.png" alt="Grand Ortus Solutions Logo">
+      </div>
+      <div class="company-address">
+        ${ce("company.addressLine1", {tag:"div"})}
+        ${ce("company.addressLine2", {tag:"div"})}
+        <span class="link">${ce("company.email")}</span> &nbsp;|<span class="link"> ${ce("company.phone")}</span><br>
+        GST: ${ce("company.gst")} | PAN: ${ce("company.pan")} | CIN: ${ce("company.cin")}
+      </div>
+    </div>
+
+    <div class="quote-title">${ce("meta.subject", {placeholder:"Quotation subject"})}</div>
+    <div class="title-rule"></div>
+
+    <div class="info-grid">
+      <div class="info-col">
+        <div class="info-head">BILL TO</div>
+        <div class="info-body">
+          <b class="co-name">${ce("customer.accountName",{placeholder:"Customer / company name"})}</b><br>
+          ${ce("customer.street",{placeholder:"Street address"})}<br>
+          ${ce("customer.city",{placeholder:"City"})}<br>
+          ${ce("customer.state",{placeholder:"State / Province"})}<br>
+          ${ce("customer.country",{placeholder:"Country"})} ${ce("customer.zip",{placeholder:"Zip"})}<br>
+          <b>Payment Term: ${ce("customer.paymentTerm")}</b>
+        </div>
+      </div>
+      <div class="info-col">
+        <div class="info-head">QUOTE DETAILS</div>
+        <div class="info-body right">
+          <div class="kv"><span class="k">Quote No.</span><span class="v">${ce("meta.quoteNo")}</span></div>
+          <div class="kv"><span class="k">Contact Name</span><span class="v">${ce("meta.contactName",{placeholder:"Contact name"})}</span></div>
+          <div class="kv"><span class="k">Date</span><span class="v">${ce("meta.date")}</span></div>
+          <div class="kv"><span class="k">Valid Until</span><span class="v valid-until">${ce("meta.validUntil")}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <table class="items">
+      <thead><tr>${theadCells}</tr></thead>
+      <tbody>${bodyRows}
+        <tr class="add-row-row no-print"><td colspan="${state.columns.length+1}"><button class="add-row-btn" id="btn-add-row">+ Add Row</button></td></tr>
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <table class="totals">
+        <tr><td class="label" colspan="5">Sub Total</td><td class="value" id="tot-subtotal">${formatNumber(calc.subTotal)}</td></tr>
+        <tr><td class="label" colspan="5">Tax</td><td class="value">${ce("totals.tax")}</td></tr>
+        <tr><td class="label" colspan="5">Adjustment</td><td class="value">${ce("totals.adjustment")}</td></tr>
+        <tr class="grand"><td class="label" colspan="5">Grand Total</td><td class="value" id="tot-grandtotal">${formatNumber(calc.grandTotal)}</td></tr>
+      </table>
+    </div>
+
+    <div class="section-title">TERMS AND CONDITIONS</div>
+    <div class="section-rule"></div>
+    <table class="terms">
+      <tr><td class="label">Implementation</td><td class="value">${ce("terms.implementation",{tag:"div"})}</td></tr>
+      <tr><td class="label">Taxes</td><td class="value">${ce("terms.taxes",{tag:"div"})}</td></tr>
+      <tr><td class="label">Validity</td><td class="value">${ce("terms.validity",{tag:"div"})}</td></tr>
+      <tr><td class="label">Order Policy</td><td class="value">${ce("terms.orderPolicy",{tag:"div"})}</td></tr>
+      <tr><td class="label">Payment Terms</td><td class="value">${ce("terms.paymentTerms",{tag:"div"})}</td></tr>
+      <tr><td class="label">Order Name</td><td class="value">${ce("terms.orderName",{tag:"div",placeholder:"—"})}</td></tr>
+      <tr><td class="label">Additional Notes</td><td class="value">${ce("terms.additionalNotes",{tag:"div",placeholder:"—"})}</td></tr>
+    </table>
+
+    <div class="section-title">PAYMENT DETAILS</div>
+    <div class="section-rule"></div>
+    <div class="payment-box">
+      <div class="col">
+        <span style="color:rgb(119,119,119)">Account Name</span><br>
+        <b style="font-size:12.5px">${ce("payment.accountName")}</b><br>
+        Bank: ${ce("payment.bankName")}<br>
+        Account No: ${ce("payment.accountNo")}<br>
+        IFSC Code: ${ce("payment.ifsc")}
+      </div>
+      <div class="col">
+        <h4>Need Assistance?</h4>
+        <span style="color:rgb(31,92,158)">${ce("company.email")}</span><br>
+        <span style="color:rgb(31,92,158)">${ce("company.phone")}</span><br>
+        <span style="color:rgb(31,92,158)">${ce("company.website")}</span>
+      </div>
+    </div>
+
+    <div class="thankyou">Thank you for considering ${ce("company.orgName")}.</div>
+    <div class="footer">${ce("company.orgName")} | ${ce("company.city")}, ${ce("company.state")} | GST: ${ce("company.gst")}</div>
+  </div>
+  `;
+
+  renderTableControls(widths);
+  attachDocumentHandlers();
+  attachColumnDragHandlers();
+}
+
+function attachColumnDragHandlers(){
+  const root = document.getElementById("quote-root");
+  if(!root) return;
+  const ths = root.querySelectorAll("th[data-col-header]");
+  let dragSrcIdx = null;
+
+  ths.forEach((th) => {
+    th.setAttribute("draggable", "true");
+    th.title = "Drag to reorder column";
+
+    th.addEventListener("dragstart", (e) => {
+      dragSrcIdx = state.columns.findIndex(c => c.id === th.dataset.colHeader);
+      e.dataTransfer.effectAllowed = "move";
+      th.classList.add("dragging");
+    });
+
+    th.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      th.classList.add("drag-over");
+    });
+
+    th.addEventListener("dragleave", () => {
+      th.classList.remove("drag-over");
+    });
+
+    th.addEventListener("dragend", () => {
+      root.querySelectorAll("th[data-col-header]").forEach(t => t.classList.remove("dragging", "drag-over"));
+    });
+
+    th.addEventListener("drop", (e) => {
+      e.preventDefault();
+      th.classList.remove("drag-over");
+      const targetIdx = state.columns.findIndex(c => c.id === th.dataset.colHeader);
+      if (dragSrcIdx !== null && targetIdx !== -1 && dragSrcIdx !== targetIdx) {
+        const movedCol = state.columns.splice(dragSrcIdx, 1)[0];
+        state.columns.splice(targetIdx, 0, movedCol);
+        saveState();
+        renderDocument();
+      }
+    });
+  });
+}
+
+/* =====================================================================
+   5. STRUCTURAL CONTROLS FOR THE ITEM TABLE (screen-only)
+   ===================================================================== */
+function renderTableControls(){
+  const wrap = document.getElementById("table-controls");
+  const chips = state.columns.map((col,idx)=>`
+    <div class="col-chip">
+      <button class="move" data-move="left" data-idx="${idx}" ${idx===0?"disabled":""} title="Move left">◀</button>
+      <span class="name">${esc(col.label)}</span>
+      <select data-type-idx="${idx}">
+        ${COLUMN_TYPES.map(t=>`<option value="${t.value}" ${t.value===col.type?"selected":""}>${t.label}</option>`).join("")}
+      </select>
+      ${(col.type === "formula" || col.type === "amount") ? `
+        <input type="text" class="formula-input" data-formula-idx="${idx}" placeholder="e.g. [Qty] * [Unit Price]" value="${esc(col.formula || (col.type==='amount' ? '[Qty] * [Unit Price]' : ''))}" title="Enter custom formula using column names e.g. [Qty] * [Unit Price] or [Total Price] * 18%">
+      ` : ''}
+      <button class="move" data-move="right" data-idx="${idx}" ${idx===state.columns.length-1?"disabled":""} title="Move right">▶</button>
+      <button data-del-col="${idx}" title="Remove column" ${state.columns.length<=MIN_COLS?"disabled":""}>✕</button>
+    </div>`).join("");
+
+  const hasFormulaCol = state.columns.some(c=>c.type==="formula"||c.type==="amount");
+  const hintText = hasFormulaCol ? `<div class="formula-hint">💡 <b>Formula Tip:</b> Use column names in brackets e.g. <code>[Qty] * [Unit Price]</code> or <code>[Total Price] * 18%</code></div>` : ``;
+
+  wrap.innerHTML = `${chips}
+    <button class="addcol-btn" id="btn-add-col" ${state.columns.length>=MAX_COLS?"disabled":""}>+ Add Column</button>
+    <span class="colcount-note">${state.columns.length}/${MAX_COLS} columns</span>
+    ${hintText}`;
+
+  wrap.querySelectorAll("[data-formula-idx]").forEach(inp=>{
+    inp.addEventListener("input",()=>{
+      const idx = +inp.dataset.formulaIdx;
+      state.columns[idx].formula = inp.value;
+      saveState();
+      updateCalculatedSpans();
+    });
+  });
+
+  wrap.querySelectorAll("[data-type-idx]").forEach(sel=>{
+    sel.addEventListener("change",()=>{
+      const col = state.columns[+sel.dataset.typeIdx];
+      col.type = sel.value;
+      if(col.type === "formula" && !col.formula){
+        const qtyCol = findFirstColumnOfType(state.columns, "qty");
+        const priceCol = findFirstColumnOfType(state.columns, "price");
+        if(qtyCol && priceCol) col.formula = `[${qtyCol.label}] * [${priceCol.label}]`;
+      }
+      saveState(); renderDocument();
+    });
+  });
+  wrap.querySelectorAll("[data-move]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const idx=+btn.dataset.idx, dir = btn.dataset.move==="left" ? -1:1, swap=idx+dir;
+      if(swap<0||swap>=state.columns.length) return;
+      [state.columns[idx],state.columns[swap]]=[state.columns[swap],state.columns[idx]];
+      saveState(); renderDocument();
+    });
+  });
+  wrap.querySelectorAll("[data-del-col]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      if(state.columns.length<=MIN_COLS) return;
+      const idx=+btn.dataset.delCol;
+      if(!confirm("Changing the number of columns may affect existing table data. Continue?")) return;
+      const [removed] = state.columns.splice(idx,1);
+      state.rows.forEach(row=> delete row[removed.id]);
+      saveState(); renderDocument();
+    });
+  });
+  const addColBtn = document.getElementById("btn-add-col");
+  if(addColBtn) addColBtn.addEventListener("click",()=>{
+    if(state.columns.length>=MAX_COLS) return;
+    const id = "c"+Date.now().toString(36).slice(-5);
+    state.columns.push({id,label:"New Column",type:"text"});
+    state.rows.forEach(row=> row[id]="");
+    saveState(); renderDocument();
+  });
+}
+
+/* =====================================================================
+   6. LIVE EDITING HANDLERS  (generic data-bind + table cells + rows)
+   ===================================================================== */
+function attachDocumentHandlers(){
+  const root = document.getElementById("quote-root");
+
+  // generic contenteditable fields bound by simple state path
+  root.querySelectorAll("[contenteditable][data-bind]").forEach(el=>{
+    el.addEventListener("input", ()=>{
+      const path = el.dataset.bind;
+      setPath(state, path, el.textContent);
+      // keep mirrored occurrences (e.g. Quote No. appears twice) in sync
+      root.querySelectorAll(`[data-bind="${path}"]`).forEach(mirror=>{
+        if(mirror!==el) mirror.textContent = el.textContent;
+      });
+      saveState();
+      if(path.startsWith("totals.")){
+        const calc = recalculate();
+        document.getElementById("tot-subtotal").textContent = formatNumber(calc.subTotal);
+        document.getElementById("tot-grandtotal").textContent = formatNumber(calc.grandTotal);
+      }
+    });
+  });
+
+  // column header renaming
+  root.querySelectorAll("[data-col-header]").forEach(th=>{
+    th.addEventListener("input", ()=>{
+      const col = state.columns.find(c=>c.id===th.dataset.colHeader);
+      if(col){ col.label = th.textContent; saveState();
+        // keep the structural chip label preview in sync without a full rebuild
+        const idx = state.columns.indexOf(col);
+        const chipName = document.querySelectorAll(".col-chip .name")[idx];
+        if(chipName) chipName.textContent = col.label;
+        updateCalculatedSpans();
+      }
+    });
+  });
+
+  // item table cells
+  root.querySelectorAll("[data-row][data-col]").forEach(cell=>{
+    if(cell.getAttribute("contenteditable")!=="true") return;
+    cell.addEventListener("focus", ()=>{ cell.textContent = cell.dataset.raw; });
+    cell.addEventListener("input", ()=>{
+      const rIdx=+cell.dataset.row, colId=cell.dataset.col;
+      state.rows[rIdx][colId]=cell.textContent;
+      cell.dataset.raw = cell.textContent;
+      saveState();
+      updateCalculatedSpans();
+    });
+    cell.addEventListener("blur", ()=>{
+      const colId = cell.dataset.col;
+      const col = state.columns.find(c=>c.id===colId);
+      const v = cell.dataset.raw ?? "";
+      cell.textContent = (isNumericType(col.type) && v!=="") ? formatNumber(v) : v;
+    });
+    cell.addEventListener("keydown",(e)=>{
+      if(e.key==="Tab"){ e.preventDefault(); moveFocus(cell, !e.shiftKey); }
+      else if(e.key==="Enter"){ e.preventDefault(); cell.blur(); }
+    });
+  });
+
+  // row delete
+  root.querySelectorAll("[data-del-row]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      if(state.rows.length<=1){ alert("At least one row is required."); return; }
+      state.rows.splice(+btn.dataset.delRow,1);
+      saveState(); renderDocument();
+    });
+  });
+
+  // add row
+  const addRowBtn = document.getElementById("btn-add-row");
+  if(addRowBtn) addRowBtn.addEventListener("click", addRow);
+
+  // logo upload
+  const logoInput = document.getElementById("logo-input");
+  if(logoInput) logoInput.addEventListener("change",(e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ state.company.logoDataUrl = reader.result; saveState(); renderDocument(); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function moveFocus(currentCell, forward){
+  const allCells = Array.from(document.querySelectorAll("#quote-root [data-row][data-col][contenteditable=true]"));
+  const i = allCells.indexOf(currentCell);
+  if(forward && i===allCells.length-1){
+    addRow();
+    requestAnimationFrame(()=>{
+      const cells = document.querySelectorAll("#quote-root [data-row][data-col][contenteditable=true]");
+      const firstOfNewRow = cells[cells.length-state.columns.length];
+      if(firstOfNewRow) placeCaret(firstOfNewRow);
+    });
+    return;
+  }
+  let nextIdx = i + (forward?1:-1);
+  nextIdx = Math.max(0, Math.min(allCells.length-1, nextIdx));
+  placeCaret(allCells[nextIdx]);
+}
+function placeCaret(el){
+  el.focus();
+  const range=document.createRange(); range.selectNodeContents(el); range.collapse(false);
+  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
+function addRow(){
+  const newRow={}; state.columns.forEach(c=> newRow[c.id]="");
+  state.rows.push(newRow);
+  const first = state.columns[0];
+  if(first && first.type==="text" && /^\d+$/.test((state.rows[state.rows.length-2]||{})[first.id]||"")){
+    newRow[first.id]=String(state.rows.length);
+  }
+  saveState(); renderDocument();
+}
+
+function prepareDocumentForPrint(){
+  const root = document.getElementById("quote-page");
+  if(!root) return () => {};
+  const editables = Array.from(root.querySelectorAll("[contenteditable]"));
+  editables.forEach(el => {
+    el.dataset.wasEditable = el.getAttribute("contenteditable");
+    el.removeAttribute("contenteditable");
+  });
+  return () => {
+    editables.forEach(el => {
+      if (el.dataset.wasEditable !== undefined) {
+        el.setAttribute("contenteditable", el.dataset.wasEditable);
+        delete el.dataset.wasEditable;
+      }
+    });
+  };
+}
+
+document.getElementById("btn-print").addEventListener("click", ()=> {
+  if(document.activeElement && typeof document.activeElement.blur === "function"){
+    document.activeElement.blur();
+  }
+  const restore = prepareDocumentForPrint();
+  window.print();
+  setTimeout(restore, 500);
+});
+
+const btnPdf = document.getElementById("btn-pdf");
+if(btnPdf){
+  btnPdf.addEventListener("click", downloadPDF);
+}
+
+function downloadPDF(){
+  if(document.activeElement && typeof document.activeElement.blur === "function"){
+    document.activeElement.blur();
+  }
+  const restore = prepareDocumentForPrint();
+  const element = document.getElementById("quote-page");
+  const btn = document.getElementById("btn-pdf");
+  const origText = btn ? btn.innerHTML : "";
+  if(btn) btn.innerHTML = "⏳ Generating PDF...";
+
+  const opt = {
+    margin:       [0, 0, 0, 0],
+    filename:     `Quotation_GOSPL_${state.meta.quoteNo || '001'}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      windowWidth: 800
+    },
+    jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' }
+  };
+
+  if(typeof html2pdf !== 'undefined'){
+    html2pdf().set(opt).from(element).save().then(()=>{
+      restore();
+      if(btn) btn.innerHTML = origText;
+    }).catch(err => {
+      console.error("PDF generation failed, falling back to print:", err);
+      restore();
+      if(btn) btn.innerHTML = origText;
+      window.print();
+    });
+  } else {
+    window.print();
+    restore();
+    if(btn) btn.innerHTML = origText;
+  }
+}
+
+document.getElementById("btn-reset").addEventListener("click", ()=>{
+  if(!confirm("This clears all quotation data in this browser. Continue?")) return;
+  state = defaultState(); saveState(); renderDocument();
+});
+
+document.getElementById("btn-sample").addEventListener("click", ()=>{
+  state.customer.accountName="Bluewave Technologies Pvt. Ltd.";
+  state.customer.street="4th Floor, Cyber Towers";
+  state.customer.city="Hyderabad"; state.customer.state="Telangana"; state.customer.zip="500081";
+  state.meta.contactName="Rahul Mehta";
+  state.rows=[
+    {c1:"1",c2:"CSC-2960",c3:"Cisco Catalyst 2960 24-Port Switch",c4:"2",c5:"50000",c6:""},
+    {c1:"2",c2:"FGT-60F",c3:"Fortigate 60F Firewall Appliance",c4:"1",c5:"75000",c6:""},
+    {c1:"3",c2:"SVC-INST",c3:"Installation & Configuration Services",c4:"1",c5:"15000",c6:""}
+  ];
+  saveState(); renderDocument();
+});
+
+/* =====================================================================
+   8. INITIAL RENDER
+   ===================================================================== */
+renderDocument();
+</script>
+</body>
+</html>
