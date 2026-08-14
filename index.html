@@ -198,7 +198,8 @@ table.terms td.value{color:rgb(102,102,102)}
    PRINT & PDF EXPORT — exact replica of screen template
    ===================================================================== */
 @media print{
-  @page{ size:A4 portrait; margin:0; }
+  @page{ size:A4 portrait; margin-top:15mm; margin-bottom:12mm; margin-left:0; margin-right:0; }
+  @page :first{ margin-top:0; margin-bottom:12mm; margin-left:0; margin-right:0; }
   html, body{
     background:#fff !important; margin:0 !important; padding:0 !important; width:100% !important; height:auto !important;
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
