@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>Quotation — Grand Ortus Solutions</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 /* =====================================================================
    APP CHROME (not part of the quotation itself — excluded from print)
@@ -95,12 +95,81 @@ tr.add-row-row td{padding:0 !important;border-bottom:none !important}
 .kv .v{font-weight:bold}
 .valid-until{color:rgb(192,57,43);font-weight:bold}
 table.items{width:754px;margin:0 20px 0 20px;border-collapse:collapse;font-size:11px;table-layout:fixed}
-table.items thead th{background:rgb(31,92,158);color:#fff;padding:7px 8px;text-align:left;font-size:11px;font-weight:bold}
+table.items thead th{background:rgb(31,92,158);color:#fff;padding:7px 8px;text-align:left;font-size:11px;font-weight:bold;position:relative;user-select:none}
 table.items thead th[draggable="true"]{cursor:grab}
 table.items thead th.dragging{opacity:0.5}
 table.items thead th.drag-over{border-left:3px solid #ffe066 !important;background:rgb(21,70,116) !important}
 table.items thead th.ctrl-col{background:transparent !important;border:none !important;box-shadow:none !important}
-table.items tbody td{padding:7px 8px;border-bottom:1px solid rgb(227,232,238);vertical-align:top;word-break:break-word}
+table.items tbody td{padding:var(--cell-padding, 7px) 8px;border-bottom:1px solid rgb(227,232,238);vertical-align:top;word-break:break-word}
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 10;
+}
+.col-resizer:hover, .col-resizer.resizing {
+  background: #ffe066;
+}
+.col-chip .col-width-input {
+  width: 42px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10.5px;
+  padding: 2px 3px;
+  text-align: center;
+  background: #fff;
+}
+.row-height-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #f2f6fa;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.row-height-control select {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10.5px;
+  padding: 2px 4px;
+  background: #fff;
+}
+.grand-total-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f7ff;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  margin-top: 4px;
+  width: 100%;
+}
+.grand-total-control input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--accent-dark);
+  background: #fff;
+  font-weight: 600;
+}
+.grand-total-control input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(31,92,158,.25);
+}
 table.items tbody tr:nth-child(even){background:rgb(247,249,251)}
 table.items td.computed{color:rgb(90,100,110);font-style:italic}
 .totals-wrap{width:754px;margin:0 20px}
@@ -174,7 +243,6 @@ table.terms td.value{color:rgb(102,102,102)}
     <span class="autosave-note" id="autosave-note">Saved in this browser</span>
     <button class="btn" id="btn-sample">Load sample data</button>
     <button class="btn danger" id="btn-reset">Reset all</button>
-    <button class="btn" id="btn-pdf">📥 Download PDF</button>
     <button class="btn primary" id="btn-print">🖨 Print / Save as PDF</button>
   </div>
 </div>
@@ -205,15 +273,16 @@ function defaultState(){
       logoDataUrl:""
     },
     columns:[
-      {id:"c1", label:"SN", type:"text"},
-      {id:"c2", label:"Part No", type:"text"},
-      {id:"c3", label:"Description", type:"text"},
-      {id:"c4", label:"Qty", type:"qty"},
-      {id:"c5", label:"Unit Price", type:"price"},
-      {id:"c6", label:"Total Price", type:"amount"}
+      {id:"c1", label:"SN", type:"text", width: 6},
+      {id:"c2", label:"Part No", type:"text", width: 14},
+      {id:"c3", label:"Description", type:"text", width: 36},
+      {id:"c4", label:"Qty", type:"qty", width: 8},
+      {id:"c5", label:"Unit Price", type:"price", width: 16},
+      {id:"c6", label:"Total Price", type:"amount", width: 20}
     ],
+    rowPadding: 7,
     rows:[ {c1:"1", c2:"", c3:"", c4:"", c5:"", c6:""} ],
-    totals:{ tax:"0", adjustment:"0" },
+    totals:{ tax:"0", adjustment:"0", grandTotalFormula:"[Sub Total] + [Tax] + [Adjustment]" },
     terms:{
       implementation:"Within 4-6 weeks from date of Purchase Order.",
       taxes:"As applicable, extra at actuals.",
@@ -243,8 +312,9 @@ function loadState(){
       meta: loadedMeta, customer:{...d.customer, ...parsed.customer},
       company:{...d.company, ...parsed.company},
       columns: Array.isArray(parsed.columns) && parsed.columns.length ? parsed.columns : d.columns,
+      rowPadding: parsed.rowPadding ?? d.rowPadding,
       rows: Array.isArray(parsed.rows) && parsed.rows.length ? parsed.rows : d.rows,
-      totals:{...d.totals, ...parsed.totals}, terms:{...d.terms, ...parsed.terms}, payment:{...d.payment, ...parsed.payment}
+      totals:{tax:"0", adjustment:"0", grandTotalFormula:"[Sub Total] + [Tax] + [Adjustment]", ...parsed.totals}, terms:{...d.terms, ...parsed.terms}, payment:{...d.payment, ...parsed.payment}
     };
   }catch(e){ console.warn("Could not load saved quotation, starting fresh.", e); return defaultState(); }
 }
@@ -276,9 +346,9 @@ function widthWeight(col){
   return 14;
 }
 function computeColumnWidths(columns){
-  const weights = columns.map(widthWeight);
+  const weights = columns.map(col => (typeof col.width === "number" && !isNaN(col.width) && col.width > 0) ? col.width : widthWeight(col));
   const sum = weights.reduce((a,b)=>a+b,0);
-  const floor = columns.length >= 8 ? 5 : 6;
+  const floor = columns.length >= 8 ? 4 : 5;
   let pct = weights.map(w => Math.max(floor, (w/sum)*100));
   const total = pct.reduce((a,b)=>a+b,0);
   return pct.map(p => (p/total)*100); // renormalize so widths always sum to exactly 100%
@@ -339,6 +409,46 @@ function evaluateFormula(formulaStr, row, columns){
   }
 }
 
+function evaluateTotalFormula(formulaStr, subTotal, tax, adjustment){
+  if(!formulaStr || !formulaStr.trim()) return subTotal + tax + adjustment;
+  let expr = formulaStr.trim();
+
+  // Replace [Sub Total], [Tax], [Adjustment]
+  expr = expr.replace(/\[Sub\s*Total\]/gi, String(subTotal));
+  expr = expr.replace(/\[Tax\]/gi, String(tax));
+  expr = expr.replace(/\[Adjustment\]/gi, String(adjustment));
+
+  // Replace [Column Label] with sum of column values
+  state.columns.forEach(col => {
+    if(col.label){
+      const escaped = col.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      let sum = 0;
+      state.rows.forEach(r => {
+        const v = parseFloat(r[col.id]);
+        if(!isNaN(v)) sum += v;
+      });
+      expr = expr.replace(new RegExp(`\\[${escaped}\\]`, 'gi'), String(sum));
+    }
+  });
+
+  // Handle percentage notation e.g. 18% -> (18/100)
+  expr = expr.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
+
+  if (/[^0-9\+\-\*\/\%\(\)\.\s]/.test(expr)) {
+    return subTotal + tax + adjustment;
+  }
+
+  try {
+    const res = Function(`"use strict"; return (${expr});`)();
+    if (typeof res === "number" && !isNaN(res) && isFinite(res)) {
+      return +res.toFixed(2);
+    }
+    return subTotal + tax + adjustment;
+  } catch(e){
+    return subTotal + tax + adjustment;
+  }
+}
+
 function recalculate(){
   const qtyCol = findFirstColumnOfType(state.columns,"qty");
   const priceCol = findFirstColumnOfType(state.columns,"price");
@@ -358,15 +468,26 @@ function recalculate(){
 
   const primaryAmountCol = formulaCols[0] || state.columns.find(c=>isNumericType(c.type));
   let subTotal=0;
-  if(primaryAmountCol){
+  if(state.totals.manualSubTotal !== undefined && state.totals.manualSubTotal !== null && state.totals.manualSubTotal !== ""){
+    subTotal = parseFloat(state.totals.manualSubTotal) || 0;
+  } else if(primaryAmountCol){
     state.rows.forEach(row=>{
       const v=parseFloat(row[primaryAmountCol.id]);
       if(!isNaN(v)) subTotal+=v;
     });
   }
+
   const tax = parseFloat(state.totals.tax)||0;
   const adjustment = parseFloat(state.totals.adjustment)||0;
-  const grandTotal = subTotal+tax+adjustment;
+
+  let grandTotal = 0;
+  if(state.totals.manualGrandTotal !== undefined && state.totals.manualGrandTotal !== null && state.totals.manualGrandTotal !== ""){
+    grandTotal = parseFloat(state.totals.manualGrandTotal) || 0;
+  } else {
+    const formula = state.totals.grandTotalFormula || "[Sub Total] + [Tax] + [Adjustment]";
+    grandTotal = evaluateTotalFormula(formula, subTotal, tax, adjustment);
+  }
+
   return {subTotal,tax,adjustment,grandTotal,hasAmountCol:!!primaryAmountCol};
 }
 
@@ -382,8 +503,8 @@ function updateCalculatedSpans(){
   });
   const subEl = document.getElementById("tot-subtotal");
   const grandEl = document.getElementById("tot-grandtotal");
-  if(subEl) subEl.textContent = formatNumber(calc.subTotal);
-  if(grandEl) grandEl.textContent = formatNumber(calc.grandTotal);
+  if(subEl && document.activeElement !== subEl) subEl.textContent = formatNumber(calc.subTotal);
+  if(grandEl && document.activeElement !== grandEl) grandEl.textContent = formatNumber(calc.grandTotal);
 }
 
 function esc(s){ return (s??"").toString().replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -406,7 +527,10 @@ function renderDocument(){
   const c = state.company;
 
   const theadCells = state.columns.map((col,i)=>
-    `<th style="width:${widths[i]}%${isNumericType(col.type)?';text-align:right':''}" contenteditable="true" data-col-header="${col.id}">${esc(col.label)}</th>`
+    `<th style="width:${widths[i]}%${isNumericType(col.type)?';text-align:right':''}" data-col-header="${col.id}">
+      <span contenteditable="true" data-col-header-text="${col.id}">${esc(col.label)}</span>
+      ${i < state.columns.length - 1 ? `<div class="col-resizer no-print" data-col-resizer="${i}" title="Drag right edge to change column width"></div>` : ''}
+    </th>`
   ).join("") + `<th class="ctrl-col no-print"></th>`;
 
   const bodyRows = state.rows.map((row,rIdx)=>{
@@ -468,7 +592,7 @@ function renderDocument(){
       </div>
     </div>
 
-    <table class="items">
+    <table class="items" style="--cell-padding: ${state.rowPadding || 7}px">
       <thead><tr>${theadCells}</tr></thead>
       <tbody>${bodyRows}
         <tr class="add-row-row no-print"><td colspan="${state.columns.length+1}"><button class="add-row-btn" id="btn-add-row">+ Add Row</button></td></tr>
@@ -477,10 +601,10 @@ function renderDocument(){
 
     <div class="totals-wrap">
       <table class="totals">
-        <tr><td class="label" colspan="5">Sub Total</td><td class="value" id="tot-subtotal">${formatNumber(calc.subTotal)}</td></tr>
+        <tr><td class="label" colspan="5">Sub Total</td><td class="value"><span contenteditable="true" id="tot-subtotal" title="Click to edit Sub Total">${formatNumber(calc.subTotal)}</span></td></tr>
         <tr><td class="label" colspan="5">Tax</td><td class="value">${ce("totals.tax")}</td></tr>
         <tr><td class="label" colspan="5">Adjustment</td><td class="value">${ce("totals.adjustment")}</td></tr>
-        <tr class="grand"><td class="label" colspan="5">Grand Total</td><td class="value" id="tot-grandtotal">${formatNumber(calc.grandTotal)}</td></tr>
+        <tr class="grand"><td class="label" colspan="5">Grand Total</td><td class="value"><span contenteditable="true" id="tot-grandtotal" title="Click to edit Grand Total">${formatNumber(calc.grandTotal)}</span></td></tr>
       </table>
     </div>
 
@@ -522,6 +646,7 @@ function renderDocument(){
   renderTableControls(widths);
   attachDocumentHandlers();
   attachColumnDragHandlers();
+  attachColumnResizeHandlers();
 }
 
 function attachColumnDragHandlers(){
@@ -532,9 +657,13 @@ function attachColumnDragHandlers(){
 
   ths.forEach((th) => {
     th.setAttribute("draggable", "true");
-    th.title = "Drag to reorder column";
+    th.title = "Drag header to reorder column";
 
     th.addEventListener("dragstart", (e) => {
+      if (e.target.classList && e.target.classList.contains("col-resizer")) {
+        e.preventDefault();
+        return;
+      }
       dragSrcIdx = state.columns.findIndex(c => c.id === th.dataset.colHeader);
       e.dataTransfer.effectAllowed = "move";
       th.classList.add("dragging");
@@ -568,11 +697,73 @@ function attachColumnDragHandlers(){
   });
 }
 
+function attachColumnResizeHandlers(){
+  const root = document.getElementById("quote-root");
+  if(!root) return;
+  const resizers = root.querySelectorAll(".col-resizer");
+  const table = root.querySelector("table.items");
+  if(!table) return;
+
+  resizers.forEach(resizer => {
+    resizer.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const colIdx = parseInt(resizer.dataset.colResizer);
+      const startX = e.clientX;
+      const tableWidth = table.getBoundingClientRect().width;
+      
+      const widths = computeColumnWidths(state.columns);
+      const startWidthCol = widths[colIdx];
+      const startWidthNext = widths[colIdx + 1];
+
+      resizer.classList.add("resizing");
+
+      function onMouseMove(moveEvent){
+        const deltaX = moveEvent.clientX - startX;
+        const deltaPct = (deltaX / tableWidth) * 100;
+
+        let newWidthCol = Math.max(3, startWidthCol + deltaPct);
+        let newWidthNext = Math.max(3, startWidthNext - deltaPct);
+
+        state.columns[colIdx].width = newWidthCol;
+        if (colIdx + 1 < state.columns.length) {
+          state.columns[colIdx + 1].width = newWidthNext;
+        }
+
+        const newWidths = computeColumnWidths(state.columns);
+        const ths = table.querySelectorAll("thead th:not(.ctrl-col)");
+        ths.forEach((th, idx) => {
+          if (newWidths[idx] !== undefined) {
+            th.style.width = newWidths[idx] + "%";
+          }
+        });
+
+        const inpCol = document.querySelector(`.col-width-input[data-width-idx="${colIdx}"]`);
+        const inpNext = document.querySelector(`.col-width-input[data-width-idx="${colIdx+1}"]`);
+        if(inpCol) inpCol.value = Math.round(newWidths[colIdx]);
+        if(inpNext) inpNext.value = Math.round(newWidths[colIdx+1]);
+      }
+
+      function onMouseUp(){
+        resizer.classList.remove("resizing");
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        saveState();
+        renderDocument();
+      }
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+  });
+}
+
 /* =====================================================================
    5. STRUCTURAL CONTROLS FOR THE ITEM TABLE (screen-only)
    ===================================================================== */
-function renderTableControls(){
+function renderTableControls(widths){
   const wrap = document.getElementById("table-controls");
+  const currentWidths = widths || computeColumnWidths(state.columns);
   const chips = state.columns.map((col,idx)=>`
     <div class="col-chip">
       <button class="move" data-move="left" data-idx="${idx}" ${idx===0?"disabled":""} title="Move left">◀</button>
@@ -580,6 +771,8 @@ function renderTableControls(){
       <select data-type-idx="${idx}">
         ${COLUMN_TYPES.map(t=>`<option value="${t.value}" ${t.value===col.type?"selected":""}>${t.label}</option>`).join("")}
       </select>
+      <span style="font-size:10px;color:var(--ink-soft);font-weight:600">W:</span>
+      <input type="number" class="col-width-input" data-width-idx="${idx}" min="3" max="80" value="${Math.round(currentWidths[idx])}" title="Column width (%)">%
       ${(col.type === "formula" || col.type === "amount") ? `
         <input type="text" class="formula-input" data-formula-idx="${idx}" placeholder="e.g. [Qty] * [Unit Price]" value="${esc(col.formula || (col.type==='amount' ? '[Qty] * [Unit Price]' : ''))}" title="Enter custom formula using column names e.g. [Qty] * [Unit Price] or [Total Price] * 18%">
       ` : ''}
@@ -590,10 +783,69 @@ function renderTableControls(){
   const hasFormulaCol = state.columns.some(c=>c.type==="formula"||c.type==="amount");
   const hintText = hasFormulaCol ? `<div class="formula-hint">💡 <b>Formula Tip:</b> Use column names in brackets e.g. <code>[Qty] * [Unit Price]</code> or <code>[Total Price] * 18%</code></div>` : ``;
 
+  const rowPaddingControl = `
+    <div class="row-height-control">
+      <span>Row Padding (Length):</span>
+      <select id="row-padding-select">
+        <option value="4" ${state.rowPadding===4?"selected":""}>Compact (4px)</option>
+        <option value="7" ${(!state.rowPadding || state.rowPadding===7)?"selected":""}>Normal (7px)</option>
+        <option value="11" ${state.rowPadding===11?"selected":""}>Medium (11px)</option>
+        <option value="16" ${state.rowPadding===16?"selected":""}>Large (16px)</option>
+      </select>
+    </div>`;
+
+  const grandTotalFormulaControl = `
+    <div class="grand-total-control">
+      <span style="font-weight:700;color:var(--accent-dark);">🧮 Grand Total Formula:</span>
+      <input type="text" id="grand-formula-input" value="${esc(state.totals.grandTotalFormula || '[Sub Total] + [Tax] + [Adjustment]')}" placeholder="e.g. [Sub Total] + [Tax] + [Adjustment] or [Sub Total] * 1.18" title="Grand Total formula. Available variables: [Sub Total], [Tax], [Adjustment], or [Column Name]">
+      ${(state.totals.manualGrandTotal || state.totals.manualSubTotal) ? `<button class="btn tiny" id="btn-reset-grandtotal" title="Reset manually edited totals back to formula">Reset Manual Total</button>` : ''}
+    </div>`;
+
   wrap.innerHTML = `${chips}
     <button class="addcol-btn" id="btn-add-col" ${state.columns.length>=MAX_COLS?"disabled":""}>+ Add Column</button>
     <span class="colcount-note">${state.columns.length}/${MAX_COLS} columns</span>
+    ${rowPaddingControl}
+    ${grandTotalFormulaControl}
     ${hintText}`;
+
+  const grandInp = wrap.querySelector("#grand-formula-input");
+  if(grandInp){
+    grandInp.addEventListener("input", ()=>{
+      state.totals.grandTotalFormula = grandInp.value;
+      saveState();
+      updateCalculatedSpans();
+    });
+  }
+
+  const resetGrandBtn = wrap.querySelector("#btn-reset-grandtotal");
+  if(resetGrandBtn){
+    resetGrandBtn.addEventListener("click", ()=>{
+      delete state.totals.manualGrandTotal;
+      delete state.totals.manualSubTotal;
+      saveState();
+      renderDocument();
+    });
+  }
+
+  wrap.querySelectorAll("[data-width-idx]").forEach(inp=>{
+    inp.addEventListener("change",()=>{
+      const idx = +inp.dataset.widthIdx;
+      let val = parseFloat(inp.value);
+      if(isNaN(val) || val < 3) val = 3;
+      state.columns[idx].width = val;
+      saveState();
+      renderDocument();
+    });
+  });
+
+  const padSel = wrap.querySelector("#row-padding-select");
+  if(padSel){
+    padSel.addEventListener("change",()=>{
+      state.rowPadding = parseInt(padSel.value);
+      saveState();
+      renderDocument();
+    });
+  }
 
   wrap.querySelectorAll("[data-formula-idx]").forEach(inp=>{
     inp.addEventListener("input",()=>{
@@ -661,18 +913,49 @@ function attachDocumentHandlers(){
       });
       saveState();
       if(path.startsWith("totals.")){
-        const calc = recalculate();
-        document.getElementById("tot-subtotal").textContent = formatNumber(calc.subTotal);
-        document.getElementById("tot-grandtotal").textContent = formatNumber(calc.grandTotal);
+        updateCalculatedSpans();
       }
     });
   });
 
+  // Editable Sub Total
+  const subEl = document.getElementById("tot-subtotal");
+  if(subEl){
+    subEl.addEventListener("focus", ()=>{
+      subEl.textContent = state.totals.manualSubTotal !== undefined && state.totals.manualSubTotal !== "" ? state.totals.manualSubTotal : recalculate().subTotal;
+    });
+    subEl.addEventListener("input", ()=>{
+      state.totals.manualSubTotal = subEl.textContent.trim();
+      saveState();
+      updateCalculatedSpans();
+    });
+    subEl.addEventListener("blur", ()=>{
+      const calc = recalculate();
+      subEl.textContent = formatNumber(calc.subTotal);
+    });
+  }
+
+  // Editable Grand Total
+  const grandEl = document.getElementById("tot-grandtotal");
+  if(grandEl){
+    grandEl.addEventListener("focus", ()=>{
+      grandEl.textContent = state.totals.manualGrandTotal !== undefined && state.totals.manualGrandTotal !== "" ? state.totals.manualGrandTotal : recalculate().grandTotal;
+    });
+    grandEl.addEventListener("input", ()=>{
+      state.totals.manualGrandTotal = grandEl.textContent.trim();
+      saveState();
+    });
+    grandEl.addEventListener("blur", ()=>{
+      const calc = recalculate();
+      grandEl.textContent = formatNumber(calc.grandTotal);
+    });
+  }
+
   // column header renaming
-  root.querySelectorAll("[data-col-header]").forEach(th=>{
-    th.addEventListener("input", ()=>{
-      const col = state.columns.find(c=>c.id===th.dataset.colHeader);
-      if(col){ col.label = th.textContent; saveState();
+  root.querySelectorAll("[data-col-header-text]").forEach(span=>{
+    span.addEventListener("input", ()=>{
+      const col = state.columns.find(c=>c.id===span.dataset.colHeaderText);
+      if(col){ col.label = span.textContent; saveState();
         // keep the structural chip label preview in sync without a full rebuild
         const idx = state.columns.indexOf(col);
         const chipName = document.querySelectorAll(".col-chip .name")[idx];
@@ -786,50 +1069,7 @@ document.getElementById("btn-print").addEventListener("click", ()=> {
   setTimeout(restore, 500);
 });
 
-const btnPdf = document.getElementById("btn-pdf");
-if(btnPdf){
-  btnPdf.addEventListener("click", downloadPDF);
-}
 
-function downloadPDF(){
-  if(document.activeElement && typeof document.activeElement.blur === "function"){
-    document.activeElement.blur();
-  }
-  const restore = prepareDocumentForPrint();
-  const element = document.getElementById("quote-page");
-  const btn = document.getElementById("btn-pdf");
-  const origText = btn ? btn.innerHTML : "";
-  if(btn) btn.innerHTML = "⏳ Generating PDF...";
-
-  const opt = {
-    margin:       [0, 0, 0, 0],
-    filename:     `Quotation_GOSPL_${state.meta.quoteNo || '001'}.pdf`,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { 
-      scale: 2, 
-      useCORS: true, 
-      logging: false,
-      windowWidth: 800
-    },
-    jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' }
-  };
-
-  if(typeof html2pdf !== 'undefined'){
-    html2pdf().set(opt).from(element).save().then(()=>{
-      restore();
-      if(btn) btn.innerHTML = origText;
-    }).catch(err => {
-      console.error("PDF generation failed, falling back to print:", err);
-      restore();
-      if(btn) btn.innerHTML = origText;
-      window.print();
-    });
-  } else {
-    window.print();
-    restore();
-    if(btn) btn.innerHTML = origText;
-  }
-}
 
 document.getElementById("btn-reset").addEventListener("click", ()=>{
   if(!confirm("This clears all quotation data in this browser. Continue?")) return;
