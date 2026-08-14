@@ -74,8 +74,8 @@ tr.add-row-row td{padding:0 !important;border-bottom:none !important}
 /* =====================================================================
    THE QUOTATION ITSELF — editable quotation template
    ===================================================================== */
-.page{width:794px;margin:0 auto;padding:0 0 30px 0;background:#fff;box-shadow:0 4px 20px rgba(20,30,45,.12);font-size:12px;color:rgb(34,34,34)}
-.top-bar{background:rgb(31,92,158);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:8px 20px;font-size:11px;font-weight:bold}
+.page{width:794px;margin:0 auto;padding:0 0 30px 0;background:#fff;box-shadow:0 4px 20px rgba(20,30,45,.12);font-size:12px;color:rgb(34,34,34);box-sizing:border-box;overflow:hidden}
+.top-bar{background:rgb(31,92,158);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 20px;font-size:11px;font-weight:bold;margin:0;width:100%;box-sizing:border-box}
 .header{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 20px 10px 20px}
 .logo-box{border:1px solid rgb(31,92,158);padding:8px 14px;min-width:180px;max-width:240px;text-align:center;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center}
 .logo-box img{max-height:65px;max-width:100%;height:auto;width:auto;display:block;margin:0 auto;object-fit:contain}
@@ -94,7 +94,7 @@ tr.add-row-row td{padding:0 !important;border-bottom:none !important}
 .kv .k{color:rgb(68,68,68)}
 .kv .v{font-weight:bold}
 .valid-until{color:rgb(192,57,43);font-weight:bold}
-table.items{width:754px;margin:0 20px 0 20px;border-collapse:collapse;font-size:11px;table-layout:fixed}
+table.items{width:calc(100% - 40px);margin:0 20px 0 20px;border-collapse:collapse;font-size:11px;table-layout:fixed}
 table.items thead th{background:rgb(31,92,158);color:#fff;padding:7px 8px;text-align:left;font-size:11px;font-weight:bold;position:relative;user-select:none}
 table.items thead th[draggable="true"]{cursor:grab}
 table.items thead th.dragging{opacity:0.5}
@@ -172,50 +172,76 @@ table.items tbody td{padding:var(--cell-padding, 7px) 8px;border-bottom:1px soli
 }
 table.items tbody tr:nth-child(even){background:rgb(247,249,251)}
 table.items td.computed{color:rgb(90,100,110);font-style:italic}
-.totals-wrap{width:754px;margin:0 20px}
+.totals-wrap{width:calc(100% - 40px);margin:0 20px}
 table.totals{width:100%;border-collapse:collapse;font-size:11.5px}
 table.totals td{padding:6px 8px}
 table.totals tr.grand td{background:rgb(31,92,158);color:#fff;font-weight:bold;font-size:13px}
 table.totals td.label{text-align:right;padding-right:12px}
 table.totals td.value{text-align:right;width:140px}
-.section-title{color:rgb(31,92,158);font-weight:bold;font-size:14px;margin:22px 20px 4px 20px}
-.section-rule{border-top:3px solid rgb(224,168,0);margin:0 20px 10px 20px}
-table.terms{width:754px;margin:0 20px 14px 20px;border-collapse:collapse;font-size:11.5px;border:1px solid rgb(223,230,238)}
+.section-title{color:rgb(31,92,158);font-weight:bold;font-size:14px;margin:22px 20px 4px 20px;break-after:avoid;page-break-after:avoid}
+.section-rule{border-top:3px solid rgb(224,168,0);margin:0 20px 10px 20px;break-after:avoid;page-break-after:avoid}
+table.terms{width:calc(100% - 40px);margin:0 20px 14px 20px;border-collapse:collapse;font-size:11.5px;border:1px solid rgb(223,230,238)}
 table.terms tr:nth-child(even){background:rgb(245,248,251)}
 table.terms td{border-bottom:1px solid rgb(223,230,238);padding:8px 12px}
 table.terms td.label{font-weight:bold;color:rgb(34,34,34);width:18%}
 table.terms td.value{color:rgb(102,102,102)}
+.terms-section{break-inside:avoid;page-break-inside:avoid}
+.payment-section{break-inside:avoid;page-break-inside:avoid}
 .payment-box{margin:0 20px 14px 20px;display:flex;justify-content:space-between;background:rgb(242,246,250);border:1px solid rgb(207,216,227);padding:12px}
 .payment-box .col{width:48%;font-size:11.5px;line-height:1.6}
 .payment-box .col h4{color:rgb(31,92,158);margin:0 0 4px 0;font-size:12px}
 .thankyou{margin:20px 20px 8px 20px;font-style:italic;color:rgb(68,68,68);font-size:11.5px;text-align:center}
 .footer{border-top:1px solid rgb(31,92,158);margin:0 20px;padding-top:6px;font-size:10px;color:rgb(85,85,85);text-align:center}
+.footer-block{break-inside:avoid;page-break-inside:avoid}
 
 /* =====================================================================
    PRINT & PDF EXPORT — exact replica of screen template
    ===================================================================== */
 @media print{
-  @page{ margin:0; size:A4 portrait; }
+  @page{ size:A4 portrait; margin:0; }
   html, body{
-    background:#fff !important; margin:0 !important; padding:0 !important; width:100% !important;
+    background:#fff !important; margin:0 !important; padding:0 !important; width:100% !important; height:auto !important;
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
   }
   *, *::before, *::after{
     -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important;
   }
   .chrome, .no-print{ display:none !important }
-  .stage{ padding:0 !important; margin:0 !important; display:block !important }
-  .page-wrap{ width:100% !important; margin:0 !important }
+  .stage{ padding:0 !important; margin:0 !important; display:block !important; width:100% !important }
+  .page-wrap{ width:100% !important; margin:0 !important; padding:0 !important }
   .page{
-    box-shadow:none !important; margin:0 auto !important; width:794px !important; max-width:100% !important;
-    padding:0 0 20px 0 !important; background:#fff !important; border:none !important; page-break-after:avoid;
+    box-shadow:none !important; margin:0 !important; width:100% !important; max-width:100% !important;
+    padding:0 0 20px 0 !important; background:#fff !important; border:none !important;
+    box-sizing:border-box !important; page-break-after:avoid;
   }
   [contenteditable]{ border:none !important; outline:none !important; box-shadow:none !important; background:transparent !important }
   [contenteditable]:hover, [contenteditable]:focus{ background:transparent !important; box-shadow:none !important }
   [contenteditable]:empty:before{ content:"" !important }
   .logo-upload, .table-controls, .ctrl-col, .ctrl-cell, .add-row-row{ display:none !important }
-  .header, .info-grid, .totals-wrap, .payment-box, table.terms, .section-title, .title-rule, .top-bar, .footer, .thankyou{
+  /* Critical compact blocks: keep together on one page */
+  .header, .info-grid, .title-rule, .top-bar{
     break-inside: avoid !important; page-break-inside: avoid !important;
+  }
+  /* Payment and footer: keep heading + box together as a unit, but allow flowing to next page */
+  .payment-section, .footer-block{
+    break-inside: avoid !important; page-break-inside: avoid !important;
+  }
+  /* Section headings: never appear alone at bottom of page — content follows immediately */
+  .section-title, .section-rule{
+    break-after: avoid !important; page-break-after: avoid !important;
+  }
+  .top-bar{
+    margin:0 !important;
+    padding:10px 20px !important;
+    width:100% !important;
+    box-sizing:border-box !important;
+    background-color: rgb(31,92,158) !important;
+    color: #ffffff !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   table.items tr{ break-inside: avoid !important; page-break-inside: avoid !important; }
   table.items thead{ display: table-header-group !important; }
@@ -608,38 +634,44 @@ function renderDocument(){
       </table>
     </div>
 
-    <div class="section-title">TERMS AND CONDITIONS</div>
-    <div class="section-rule"></div>
-    <table class="terms">
-      <tr><td class="label">Implementation</td><td class="value">${ce("terms.implementation",{tag:"div"})}</td></tr>
-      <tr><td class="label">Taxes</td><td class="value">${ce("terms.taxes",{tag:"div"})}</td></tr>
-      <tr><td class="label">Validity</td><td class="value">${ce("terms.validity",{tag:"div"})}</td></tr>
-      <tr><td class="label">Order Policy</td><td class="value">${ce("terms.orderPolicy",{tag:"div"})}</td></tr>
-      <tr><td class="label">Payment Terms</td><td class="value">${ce("terms.paymentTerms",{tag:"div"})}</td></tr>
-      <tr><td class="label">Order Name</td><td class="value">${ce("terms.orderName",{tag:"div",placeholder:"—"})}</td></tr>
-      <tr><td class="label">Additional Notes</td><td class="value">${ce("terms.additionalNotes",{tag:"div",placeholder:"—"})}</td></tr>
-    </table>
+    <div class="terms-section">
+      <div class="section-title">TERMS AND CONDITIONS</div>
+      <div class="section-rule"></div>
+      <table class="terms">
+        <tr><td class="label">Implementation</td><td class="value">${ce("terms.implementation",{tag:"div"})}</td></tr>
+        <tr><td class="label">Taxes</td><td class="value">${ce("terms.taxes",{tag:"div"})}</td></tr>
+        <tr><td class="label">Validity</td><td class="value">${ce("terms.validity",{tag:"div"})}</td></tr>
+        <tr><td class="label">Order Policy</td><td class="value">${ce("terms.orderPolicy",{tag:"div"})}</td></tr>
+        <tr><td class="label">Payment Terms</td><td class="value">${ce("terms.paymentTerms",{tag:"div"})}</td></tr>
+        <tr><td class="label">Order Name</td><td class="value">${ce("terms.orderName",{tag:"div",placeholder:"—"})}</td></tr>
+        <tr><td class="label">Additional Notes</td><td class="value">${ce("terms.additionalNotes",{tag:"div",placeholder:"—"})}</td></tr>
+      </table>
+    </div>
 
-    <div class="section-title">PAYMENT DETAILS</div>
-    <div class="section-rule"></div>
-    <div class="payment-box">
-      <div class="col">
-        <span style="color:rgb(119,119,119)">Account Name</span><br>
-        <b style="font-size:12.5px">${ce("payment.accountName")}</b><br>
-        Bank: ${ce("payment.bankName")}<br>
-        Account No: ${ce("payment.accountNo")}<br>
-        IFSC Code: ${ce("payment.ifsc")}
-      </div>
-      <div class="col">
-        <h4>Need Assistance?</h4>
-        <span style="color:rgb(31,92,158)">${ce("company.email")}</span><br>
-        <span style="color:rgb(31,92,158)">${ce("company.phone")}</span><br>
-        <span style="color:rgb(31,92,158)">${ce("company.website")}</span>
+    <div class="payment-section">
+      <div class="section-title">PAYMENT DETAILS</div>
+      <div class="section-rule"></div>
+      <div class="payment-box">
+        <div class="col">
+          <span style="color:rgb(119,119,119)">Account Name</span><br>
+          <b style="font-size:12.5px">${ce("payment.accountName")}</b><br>
+          Bank: ${ce("payment.bankName")}<br>
+          Account No: ${ce("payment.accountNo")}<br>
+          IFSC Code: ${ce("payment.ifsc")}
+        </div>
+        <div class="col">
+          <h4>Need Assistance?</h4>
+          <span style="color:rgb(31,92,158)">${ce("company.email")}</span><br>
+          <span style="color:rgb(31,92,158)">${ce("company.phone")}</span><br>
+          <span style="color:rgb(31,92,158)">${ce("company.website")}</span>
+        </div>
       </div>
     </div>
 
-    <div class="thankyou">Thank you for considering ${ce("company.orgName")}.</div>
-    <div class="footer">${ce("company.orgName")} | ${ce("company.city")}, ${ce("company.state")} | GST: ${ce("company.gst")}</div>
+    <div class="footer-block">
+      <div class="thankyou">Thank you for considering ${ce("company.orgName")}.</div>
+      <div class="footer">${ce("company.orgName")} | ${ce("company.city")}, ${ce("company.state")} | GST: ${ce("company.gst")}</div>
+    </div>
   </div>
   `;
 
