@@ -39,10 +39,23 @@ button,select{font-family:inherit;cursor:pointer}
 .page-wrap{position:relative}
 
 /* ---------- Editable-affordance styling (screen only) ---------- */
-[contenteditable]{border-radius:3px}
-[contenteditable]:hover{background:rgba(31,92,158,.07);box-shadow:0 0 0 2px rgba(31,92,158,.12)}
-[contenteditable]:focus{outline:none;background:rgba(31,92,158,.12);box-shadow:0 0 0 2px var(--accent)}
+[contenteditable]{border-radius:4px;cursor:text;transition:background-color 0.15s ease, box-shadow 0.15s ease;position:relative}
+[contenteditable]:hover{background:rgba(31,92,158,.08);box-shadow:0 0 0 2px rgba(31,92,158,.18)}
+[contenteditable]:focus{outline:none;background:rgba(31,92,158,.12) !important;box-shadow:0 0 0 2px var(--accent) !important}
 [contenteditable]:empty:before{content:attr(data-placeholder);color:#9fb3c8;font-style:italic}
+
+/* Toggleable Edit Highlight mode */
+.page.highlight-editable [contenteditable]{background:rgba(31,92,158,.06);box-shadow:0 0 0 1px rgba(31,92,158,.25)}
+.page.highlight-editable [contenteditable]:empty{background:rgba(224,168,0,.15);box-shadow:0 0 0 1.5px #e0a800}
+
+/* Top bar editable contrast */
+.top-bar [contenteditable]:hover{background:rgba(255,255,255,.2);box-shadow:0 0 0 2px rgba(255,255,255,.3)}
+.top-bar [contenteditable]:focus{background:rgba(255,255,255,.25) !important;box-shadow:0 0 0 2px #ffe066 !important;color:#fff}
+
+/* Table header edit target */
+table.items thead th > span[contenteditable]{display:inline-block;padding:2px 4px;border-radius:3px}
+table.items thead th > span[contenteditable]:hover{background:rgba(255,255,255,.2)}
+table.items thead th > span[contenteditable]:focus{background:rgba(255,255,255,.3) !important;box-shadow:0 0 0 2px #ffe066 !important;color:#fff}
 
 /* ---------- Table structure toolbar (screen only) ---------- */
 .table-controls{margin:0 20px 8px 20px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -100,7 +113,11 @@ table.items thead th[draggable="true"]{cursor:grab}
 table.items thead th.dragging{opacity:0.5}
 table.items thead th.drag-over{border-left:3px solid #ffe066 !important;background:rgb(21,70,116) !important}
 table.items thead th.ctrl-col{background:transparent !important;border:none !important;box-shadow:none !important}
-table.items tbody td{padding:var(--cell-padding, 7px) 8px;border-bottom:1px solid rgb(227,232,238);vertical-align:top;word-break:break-word}
+table.items tbody td{padding:0 !important;border-bottom:1px solid rgb(227,232,238);vertical-align:top;word-break:break-word;position:relative;cursor:text}
+table.items tbody td > [contenteditable], table.items tbody td.computed > span{display:block;width:100%;min-height:28px;padding:var(--cell-padding, 7px) 8px;box-sizing:border-box;outline:none;cursor:text;word-break:break-word}
+table.items tbody td:hover > [contenteditable]{background:rgba(31,92,158,.08);box-shadow:inset 0 0 0 1px rgba(31,92,158,.2)}
+table.items tbody td > [contenteditable]:focus{background:rgba(31,92,158,.12) !important;box-shadow:inset 0 0 0 2px var(--accent) !important}
+
 .col-resizer {
   position: absolute;
   top: 0;
@@ -177,14 +194,16 @@ table.totals{width:100%;border-collapse:collapse;font-size:11.5px}
 table.totals td{padding:6px 8px}
 table.totals tr.grand td{background:rgb(31,92,158);color:#fff;font-weight:bold;font-size:13px}
 table.totals td.label{text-align:right;padding-right:12px}
-table.totals td.value{text-align:right;width:140px}
+table.totals td.value{text-align:right;width:140px;padding:0 !important;cursor:text}
+table.totals td.value > [contenteditable]{display:block;width:100%;padding:6px 8px;box-sizing:border-box}
 .section-title{color:rgb(31,92,158);font-weight:bold;font-size:14px;margin:22px 20px 4px 20px;break-after:avoid;page-break-after:avoid}
 .section-rule{border-top:3px solid rgb(224,168,0);margin:0 20px 10px 20px;break-after:avoid;page-break-after:avoid}
 table.terms{width:calc(100% - 40px);margin:0 20px 14px 20px;border-collapse:collapse;font-size:11.5px;border:1px solid rgb(223,230,238)}
 table.terms tr:nth-child(even){background:rgb(245,248,251)}
 table.terms td{border-bottom:1px solid rgb(223,230,238);padding:8px 12px}
 table.terms td.label{font-weight:bold;color:rgb(34,34,34);width:18%}
-table.terms td.value{color:rgb(102,102,102)}
+table.terms td.value{color:rgb(102,102,102);padding:0 !important;cursor:text}
+table.terms td.value > [contenteditable]{display:block;width:100%;min-height:30px;padding:8px 12px;box-sizing:border-box}
 .terms-section{break-inside:avoid;page-break-inside:avoid}
 .payment-section{break-inside:avoid;page-break-inside:avoid}
 .payment-box{margin:0 20px 14px 20px;display:flex;justify-content:space-between;background:rgb(242,246,250);border:1px solid rgb(207,216,227);padding:12px}
@@ -272,6 +291,7 @@ table.terms td.value{color:rgb(102,102,102)}
   </div>
   <div class="actions">
     <span class="autosave-note" id="autosave-note">Saved in this browser</span>
+    <button class="btn" id="btn-toggle-highlight" title="Highlight all editable fields on the document">✏️ Highlight Edit Areas</button>
     <button class="btn" id="btn-sample">Load sample data</button>
     <button class="btn danger" id="btn-reset">Reset all</button>
     <button class="btn primary" id="btn-print">🖨 Print / Save as PDF</button>
@@ -939,12 +959,34 @@ function renderTableControls(widths){
 function attachDocumentHandlers(){
   const root = document.getElementById("quote-root");
 
+  // Delegated click handler: clicking ANYWHERE inside a cell/container focuses its editable element
+  root.addEventListener("click", (e) => {
+    if (e.target.closest("[contenteditable='true']")) return;
+
+    const cell = e.target.closest("table.items tbody td, table.terms td.value, table.totals td.value");
+    if (cell) {
+      const editable = cell.querySelector("[contenteditable='true']");
+      if (editable) { placeCaret(editable, true); return; }
+    }
+
+    const th = e.target.closest("table.items thead th");
+    if (th && !e.target.classList.contains("col-resizer")) {
+      const editable = th.querySelector("[contenteditable='true']");
+      if (editable) { placeCaret(editable, true); return; }
+    }
+
+    const container = e.target.closest(".kv, .info-body, .payment-box .col");
+    if (container) {
+      const editable = container.querySelector("[contenteditable='true']");
+      if (editable) { placeCaret(editable, true); return; }
+    }
+  });
+
   // generic contenteditable fields bound by simple state path
   root.querySelectorAll("[contenteditable][data-bind]").forEach(el=>{
     el.addEventListener("input", ()=>{
       const path = el.dataset.bind;
       setPath(state, path, el.textContent);
-      // keep mirrored occurrences (e.g. Quote No. appears twice) in sync
       root.querySelectorAll(`[data-bind="${path}"]`).forEach(mirror=>{
         if(mirror!==el) mirror.textContent = el.textContent;
       });
@@ -993,7 +1035,6 @@ function attachDocumentHandlers(){
     span.addEventListener("input", ()=>{
       const col = state.columns.find(c=>c.id===span.dataset.colHeaderText);
       if(col){ col.label = span.textContent; saveState();
-        // keep the structural chip label preview in sync without a full rebuild
         const idx = state.columns.indexOf(col);
         const chipName = document.querySelectorAll(".col-chip .name")[idx];
         if(chipName) chipName.textContent = col.label;
@@ -1002,7 +1043,7 @@ function attachDocumentHandlers(){
     });
   });
 
-  // item table cells
+  // item table cells with enhanced keyboard navigation
   root.querySelectorAll("[data-row][data-col]").forEach(cell=>{
     if(cell.getAttribute("contenteditable")!=="true") return;
     cell.addEventListener("focus", ()=>{ cell.textContent = cell.dataset.raw; });
@@ -1020,8 +1061,19 @@ function attachDocumentHandlers(){
       cell.textContent = (isNumericType(col.type) && v!=="") ? formatNumber(v) : v;
     });
     cell.addEventListener("keydown",(e)=>{
-      if(e.key==="Tab"){ e.preventDefault(); moveFocus(cell, !e.shiftKey); }
-      else if(e.key==="Enter"){ e.preventDefault(); cell.blur(); }
+      if(e.key==="Tab"){
+        e.preventDefault();
+        moveFocus(cell, !e.shiftKey);
+      } else if(e.key==="Enter"){
+        e.preventDefault();
+        if(e.shiftKey){
+          moveFocusVertical(cell, -1);
+        } else {
+          moveFocusVertical(cell, 1);
+        }
+      } else if(e.key==="Escape"){
+        cell.blur();
+      }
     });
   });
 
@@ -1048,6 +1100,19 @@ function attachDocumentHandlers(){
   });
 }
 
+// Highlight Edit Areas button toggle
+const btnToggleHighlight = document.getElementById("btn-toggle-highlight");
+if(btnToggleHighlight){
+  btnToggleHighlight.addEventListener("click", ()=>{
+    const page = document.getElementById("quote-page");
+    if(!page) return;
+    page.classList.toggle("highlight-editable");
+    const isActive = page.classList.contains("highlight-editable");
+    btnToggleHighlight.classList.toggle("primary", isActive);
+    btnToggleHighlight.textContent = isActive ? "✏️ Highlight Active" : "✏️ Highlight Edit Areas";
+  });
+}
+
 function moveFocus(currentCell, forward){
   const allCells = Array.from(document.querySelectorAll("#quote-root [data-row][data-col][contenteditable=true]"));
   const i = allCells.indexOf(currentCell);
@@ -1056,19 +1121,47 @@ function moveFocus(currentCell, forward){
     requestAnimationFrame(()=>{
       const cells = document.querySelectorAll("#quote-root [data-row][data-col][contenteditable=true]");
       const firstOfNewRow = cells[cells.length-state.columns.length];
-      if(firstOfNewRow) placeCaret(firstOfNewRow);
+      if(firstOfNewRow) placeCaret(firstOfNewRow, true);
     });
     return;
   }
   let nextIdx = i + (forward?1:-1);
   nextIdx = Math.max(0, Math.min(allCells.length-1, nextIdx));
-  placeCaret(allCells[nextIdx]);
+  placeCaret(allCells[nextIdx], true);
 }
-function placeCaret(el){
+
+function moveFocusVertical(currentCell, rowDelta){
+  const rIdx = parseInt(currentCell.dataset.row);
+  const colId = currentCell.dataset.col;
+  const targetRowIdx = rIdx + rowDelta;
+
+  if (rowDelta > 0 && targetRowIdx >= state.rows.length) {
+    addRow();
+    requestAnimationFrame(() => {
+      const nextCell = document.querySelector(`#quote-root [data-row="${state.rows.length-1}"][data-col="${colId}"][contenteditable=true]`);
+      if (nextCell) placeCaret(nextCell, true);
+    });
+    return;
+  }
+
+  if (targetRowIdx >= 0 && targetRowIdx < state.rows.length) {
+    const nextCell = document.querySelector(`#quote-root [data-row="${targetRowIdx}"][data-col="${colId}"][contenteditable=true]`);
+    if (nextCell) placeCaret(nextCell, true);
+  }
+}
+
+function placeCaret(el, selectAll = false){
   el.focus();
-  const range=document.createRange(); range.selectNodeContents(el); range.collapse(false);
-  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  if(!selectAll){
+    range.collapse(false);
+  }
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
+
 function addRow(){
   const newRow={}; state.columns.forEach(c=> newRow[c.id]="");
   state.rows.push(newRow);
